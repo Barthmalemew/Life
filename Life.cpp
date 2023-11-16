@@ -1,4 +1,5 @@
 // Life simulation
+//Kevin Anderson, Ari Soria-Huerta, Timothy Huff, Jan Arroyo, Thomas Menter, Aden Yu
 
 #include <iostream>
 #include <fstream>
@@ -63,17 +64,18 @@ void calcNewWorld(State world[][MAXCOLS]);
 */
 int neighborCount(State world[][MAXCOLS], int row, int col);
 
+
 int main()
 {
 	State world[MAXROWS][MAXCOLS];
 	int generation = 0;
 	bool stop = false;
-
 	
-	// TODO: set up and initialize the 'world' array
+	
+	initWorld(world);
 
-
-
+	getFile(world);
+	
 	do
 	{
 		// system("cls") clears the screen; only works on Windows machines
@@ -89,13 +91,33 @@ int main()
 		// TODO: get input from user and decide whether to quit the loop
 		// and whether to compute a new generation
 
+		//gets a key press for enter or q+enter and decides wether that key press exits the program or continues to the next generation.
+		//strings are the only solution that accounts for additional keypressees before enter.
+		char c [FILENAMESIZE];
+		int i = 0;
+		cin.getline(c, FILENAMESIZE);
+			
+		//detects if q or Q is pressed but only if its the only character pressed before enter. and exits the game.
+		if (c[i] == 'q' || c[i] == 'Q')
+		{
+			stop = true;
+		}
+		else if (c[i] != '\0')
+		{
+			stop = false;
+			i++;
+		}
 
-
+		calcNewWorld(world);
+		
 	} while (!stop);
 
 	return 0;
 }
 
+
+//Calculates the number of neighbors around the 8 blocks surrounding each cell in the world array
+//uses algebra within for loops to achieve this.
 int neighborCount(State world[][MAXCOLS], int row, int col)
 {
 	// This code checks to make sure you aren't trying to count neighbors for any
@@ -113,32 +135,116 @@ int neighborCount(State world[][MAXCOLS], int row, int col)
 		exit(1);
 	}
 
-	int i = 0;
+	//i is count.
+	int i = 0; 
+	int x; 
+	int y;
 
 	// TODO: write neighborCount code
-
-
-
+	for (x = row - 1; x <= row + 1; x++)
+	{
+		for (y = col - 1; y <= col + 1; y++)
+		{
+			//skips the currently selected cell, you cant be your own neighbor
+			if (x == row && y == col)
+			{
+				y++;
+			}
+			//neighbors mean count goes up
+			if (world[x][y] == State::alive)
+			{
+				i++;
+			}	
+		}
+	}
 	return i;
 }
 
+
+//calls the neighbor count function for each cell currently called in the calcNewWorld function.
+//a temp array is used for this to hold values and allow the changes to occur across the board simaltaniously.
 void calcNewWorld(State world[][MAXCOLS])
 {
-	// TODO: write calcNewWorld code
+	//TODO: write calcNewWorld code
+
+	//uses a temp array to avoid current changes from overwriting changes to the next cell. 
+	State tempworld[MAXROWS][MAXCOLS];
+
+	for (int x = 1; x <= MAXWORLDROWS; x++)
+	{
+		for (int y = 1; y <= MAXWORLDCOLS; y++)
+		{
+			int neighbors = neighborCount(world, x, y);
+
+			//statements to check the conditions at which a cell lives or dies
+			if (world[x][y] == State::alive && (neighbors == 2 || neighbors == 3))
+			{
+				tempworld[x][y] = State::alive;
+			}
+			else if (world[x][y] == State::dead && neighbors == 3)
+			{
+				tempworld[x][y] = State::alive;
+			}
+			else
+			{
+				tempworld[x][y] = State::dead;
+			}
+		}
+	}
+	//places temp array back into the world array
+	for (int i = 1; i <= MAXWORLDROWS; i++)
+	{
+		for (int j = 1; j <= MAXWORLDCOLS; j++)
+		{
+			world[i][j] = tempworld[i][j];
+		}
+	}
 }
 
+
+//Uses getline to load each row of the file into the line array and then compare that line against its corresponding line in the world 2Darray.
+//Checks for Errors along the way
 void getFile(State world[][MAXCOLS])
 {
-	ifstream inFile;
 	int row = 1;
-
-	// TODO: Write getFile code
-	// Make sure row is incremented each time you read a line from the file
-
+	size_t lineSize;
+	
+	char input[FILENAMESIZE];
+	char line[MAXWORLDCOLS + 1];
 
 	
-	
-	
+	//asks the user to enter a file name to be opened.
+	printf("Enter the name of the file you want to use: ");
+	printf("\n");
+	cin.getline(input, FILENAMESIZE);
+
+	//initializes filestream and opens the user entered file
+	ifstream inFile;
+	inFile.open(input);
+
+	//checks if a file is open and throws an error if not and closes the program
+	if (!inFile.is_open())
+	{
+		cerr << "ERROR: Input file cannot be opened.";
+		exit(1);
+	}
+	//grabs a line from each row and stores them in a string array
+	while(row <= MAXWORLDROWS && inFile.getline(line, MAXWORLDCOLS + 1))
+	{
+		//gives the size of the line entered in the string line.
+		lineSize = strlen(line);
+		
+		//checks if the value stored in each column of the string array line is alive or dead.
+		for (int i = 0; i < lineSize; i++)
+		{
+			if (line[i] == '*')
+			{
+				world[row][i+1] = State::alive;
+			}
+		}
+		row++;
+	}
+
 	// After file reading is finished, this code checks to see if the reading stopped
 	// because of too many characters on a line in the file, or too many rows in the file
 	// It is possible that you might have to change the conditions here depending on
@@ -160,15 +266,38 @@ void getFile(State world[][MAXCOLS])
 	inFile.close();
 }
 
+
+//displays the current state of the world array in context of CELLs and EMPTYs. 
+// or as astrisks and spaces for human eyes. 
 void display(State world[][MAXCOLS])
 {
-	// TODO: write the display code
-
-
-	cout << endl;
+	for (int i = 1; i < MAXROWS; i++)
+	{
+		for (int j = 1; j < MAXCOLS; j++)
+		{
+			if (world[i][j] == State::alive)
+			{
+				printf("%c", CELL);
+			}
+			else
+			{
+				printf("%c", EMPTY);
+			}
+		}
+		printf("\n");
+	}
+	printf("\n");
 }
 
+
+//initialize the world with all zero's so that the board is an even 80 by 25.
 void initWorld(State world[][MAXCOLS])
 {
-	// TODO: write initWorld code
+	for (int i = 0; i < MAXROWS; i++)
+	{
+		for (int j = 0; j < MAXCOLS; j++)
+		{
+			world[i][j] = State::dead;
+		}
+	}
 }
